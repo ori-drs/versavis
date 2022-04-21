@@ -56,6 +56,7 @@ ros::Publisher inno_skew_pub("/versavis/ekf/inno_skew", &inno_skew_msg);
 Timer timer_cam0 = Timer((Tcc *)TCC0);
 Timer timer_cam1 = Timer((Tcc *)TCC1);
 Timer timer_cam2 = Timer((TcCount16 *)TC3);
+Timer timer_cam3 = Timer((Tcc *)TCC2); // come back
 Timer timer_imu = Timer((TcCount16 *)TC5);
 
 /* ----- IMU ----- */
@@ -78,6 +79,8 @@ Camera cam1(&nh, CAM1_TOPIC, CAM1_RATE, timer_cam1, CAM1_TYPE, CAM1_TRIGGER_PIN,
             CAM1_EXPOSURE_PIN, true);
 Camera cam2(&nh, CAM2_TOPIC, CAM2_RATE, timer_cam2, CAM2_TYPE, CAM2_TRIGGER_PIN,
             CAM2_EXPOSURE_PIN, true);
+Camera cam3(&nh, CAM3_TOPIC, CAM3_RATE, timer_cam3, CAM3_TYPE, CAM3_TRIGGER_PIN,
+            CAM3_EXPOSURE_PIN, true);
 
 void setup() {
   DEBUG_INIT(115200);
@@ -123,14 +126,16 @@ void setup() {
   cam0.setup();
   cam1.setup();
   cam2.setup();
+  cam3.setup();
 
   /* ----- Initialize all connected cameras. ----- */
   while (!cam0.isInitialized() || !cam1.isInitialized() ||
-         !cam2.isInitialized()) {
+         !cam2.isInitialized() || !cam3.isInitialized()) {
     DEBUG_PRINTLN(F("Main: Initializing."));
     cam0.initialize();
     cam1.initialize();
     cam2.initialize();
+    cam3.initialize();
 
 #ifndef DEBUG
     nh.spinOnce();
@@ -164,23 +169,29 @@ void setup() {
   NVIC_EnableIRQ(TCC1_IRQn);
   NVIC_EnableIRQ(TC3_IRQn);
   NVIC_EnableIRQ(TC5_IRQn);
+  NVIC_EnableIRQ(TCC2_IRQn);
+
 
   imu.begin();
   cam0.begin();
   cam1.begin();
   cam2.begin();
+  cam3.begin();
 
   /* ----- Interrupt for measuring the exposure time. ----- */
   noInterrupts(); // Disable interrupts to configure them --> delay()'s
   // currently not working!
 
-  DEBUG_PRINTLN(F("Main: Attach interrupts."));
+//  DEBUG_PRINTLN(F("Main: Attach interrupts."));
   attachInterrupt(digitalPinToInterrupt(cam0.exposurePin()), exposureEnd0,
                   FALLING);
   attachInterrupt(digitalPinToInterrupt(cam1.exposurePin()), exposureEnd1,
                   FALLING);
   attachInterrupt(digitalPinToInterrupt(cam2.exposurePin()), exposureEnd2,
                   FALLING);
+  attachInterrupt(digitalPinToInterrupt(cam3.exposurePin()), exposureEnd3,
+                  FALLING);
+                  
   interrupts();
 
   DEBUG_PRINTLN(F("Main: Setup done."));
@@ -190,6 +201,7 @@ void loop() {
   cam0.publish();
   cam1.publish();
   cam2.publish();
+  cam3.publish();
   imu.publish();
 
   if (nh.isNewEkfAvailable()) {
@@ -218,6 +230,10 @@ void TCC1_Handler() { // Called by cam1_timer for camera 1 trigger.
   cam1.triggerMeasurement();
 }
 
+void TCC2_Handler() { // Called by cam1_timer for camera 1 trigger.
+  cam3.triggerMeasurement();
+}
+
 void TC3_Handler() { // Called by cam2_timer for camera 2 trigger.
   cam2.triggerMeasurement();
 }
@@ -230,7 +246,7 @@ void exposureEnd0() {
   cam0.exposureEnd();
 #ifdef ILLUMINATION_MODULE
   // Deactivate the LEDs with the last camera.
-  if (!cam1.isExposing() && !cam2.isExposing()) {
+  if (!cam1.isExposing() && !cam2.isExposing() && !cam3.isExposing()) {
     digitalWrite(ILLUMINATION_PIN, LOW);
   }
 #endif
@@ -240,7 +256,7 @@ void exposureEnd1() {
   cam1.exposureEnd();
 #ifdef ILLUMINATION_MODULE
   // Deactivate the LEDs with the last camera.
-  if (!cam0.isExposing() && !cam2.isExposing()) {
+  if (!cam0.isExposing() && !cam2.isExposing() && !cam3.isExposing()) {
     digitalWrite(ILLUMINATION_PIN, LOW);
   }
 #endif
@@ -250,7 +266,17 @@ void exposureEnd2() {
   cam2.exposureEnd();
 #ifdef ILLUMINATION_MODULE
   // Deactivate the LEDs with the last camera.
-  if (!cam0.isExposing() && !cam1.isExposing()) {
+  if (!cam0.isExposing() && !cam1.isExposing() && !cam3.isExposing()) {
+    digitalWrite(ILLUMINATION_PIN, LOW);
+  }
+#endif
+}
+
+void exposureEnd3() {
+  cam3.exposureEnd();
+#ifdef ILLUMINATION_MODULE
+  // Deactivate the LEDs with the last camera.
+  if (!cam0.isExposing() && !cam1.isExposing() && !cam2.isExposing()) {
     digitalWrite(ILLUMINATION_PIN, LOW);
   }
 #endif

@@ -14,11 +14,9 @@
        If not specified, defaults to first camera found. -->
   <arg name="cam0_serial" default="20031713" />
   <arg name="cam1_serial" default="19195158" />
-  <arg name="cam2_serial" default="21159810" />
   <arg name="calibrated" default="0" />
   <arg name="node_start_delay_cam0" default="10.0" />
   <arg name="node_start_delay_cam1" default="18.0" />
-  <arg name="node_start_delay_cam2" default="24.0" />
 
   <!-- camera nodelet system -->
 
@@ -130,60 +128,9 @@
   </group>
 
 
-  <group ns="$(arg camera_name)_$(arg camera_type)_2" >
-    <!-- nodelet manager -->
-    <!-- camera driver nodelet -->
-    <node pkg="nodelet" type="nodelet" name="camera_nodelet"
-          args="load spinnaker_camera_driver/SpinnakerCameraNodelet /$(arg camera_manager)"
-          launch-prefix="bash -c 'sleep $(arg node_start_delay_cam2); $0 $@'" >
-
-      <!-- The following params will be included from a seperate config file soon, this is just for a quick test -->
-      <param name="frame_id" value="cam2" />
-      <param name="serial" value="$(arg cam2_serial)" />
-      <param name="acquisition_frame_rate_enable" value="false" />
-
-      <!-- Trigger related config -->
-      <param name="acquisition_mode" value="Continuous" />
-      <param name="trigger_source" value="Line0" /> <!-- Pin 2 -->
-      <param name="enable_trigger" value="On" />
-      <param name="trigger_activation_mode" value="RisingEdge" />
-
-      <!-- Exposure related config -->
-      <param name="exposure_mode" value="Timed" />
-      <param name="exposure_auto" value="Continuous" />
-      <!-- <param name="exposure_auto" value="Off" />
-      <param name="exposure_time" value="6000" /> --> <!-- in microseconds -->
-      <param name="line_selector" value="Line2" />
-      <param name="line_mode" value="Output" />
-      <param name="line_source" value="ExposureActive" />
-      <param name="line_inverter" value="false"/>
-      <param name="auto_exposure_time_upper_limit" value="5000" />
-      <param name="auto_exposure_time_lower_limit" value="300" />
-
-
-      <!-- Analog related config -->
-      <!-- <param name="auto_gain" value="Off" />
-      <param name="gain" value="5" /> -->
-      <param name="auto_gain" value="Continuous" />
-      <param name="auto_white_balance" value="Continuous" />
-    </node>
-    <node pkg="nodelet" type="nodelet" name="compile_nodelet_cam2"
-      args="load versavis/VersaVISSynchronizerNodelet /$(arg camera_manager)"
-          output="screen"
-          required="true">
-      <param name="driver_topic" type="string" value="/$(arg camera_name)_$(arg camera_type)_2/image_numbered" />
-      <param name="versavis_topic" type="string" value="/versavis/cam2/" />
-      <param name="imu_offset_us" type="int" value="0"/>
-    </node>
-  </group>
-
-
-
-
   <!-- Relay publish chameleon3 camera_info topic as versavis. -->
   <node name="relay0" pkg="topic_tools" type="relay" args="/$(arg camera_name)_$(arg camera_type)_0/camera_info /versavis/cam0/camera_info" required="true" output="screen"/>
   <node name="relay1" pkg="topic_tools" type="relay" args="/$(arg camera_name)_$(arg camera_type)_1/camera_info /versavis/cam1/camera_info" required="true" output="screen"/>
-  <node name="relay2" pkg="topic_tools" type="relay" args="/$(arg camera_name)_$(arg camera_type)_2/camera_info /versavis/cam2/camera_info" required="true" output="screen"/>
 
   <!-- Run VersaVIS link. -->
   <node name="rosserial_python" pkg="rosserial_python" type="serial_node.py"
